@@ -2,16 +2,14 @@ terraform {
   required_version = ">= 1.7"
 
   # S3 backend replaces Azure Storage backend.
-  # Bootstrap: aws s3 mb s3://tfstate-aiplatform-dev && \
-  #            aws dynamodb create-table --table-name tfstate-lock \
-  #              --attribute-definitions AttributeName=LockID,AttributeType=S \
-  #              --key-schema AttributeName=LockID,KeyType=HASH \
-  #              --billing-mode PAY_PER_REQUEST
+  # Bootstrap: aws s3 mb s3://tfstate-aiplatform-dev
+  # use_lockfile = true uses S3 native locking (no DynamoDB table required;
+  # needs Terraform >= 1.10 and an S3 bucket with Object Lock or versioning).
   backend "s3" {
     bucket         = "tfstate-aiplatform-dev"
     key            = "dev/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "tfstate-lock"
+    use_lockfile   = true
     encrypt        = true
   }
 

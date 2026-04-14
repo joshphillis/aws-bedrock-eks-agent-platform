@@ -115,7 +115,7 @@ resource "aws_route_table_association" "private" {
 
 # ── Security Group: EKS Nodes ─────────────────────────────────────────────────
 resource "aws_security_group" "eks_nodes" {
-  name_prefix = "sg-eks-nodes-${var.environment}-"
+  name_prefix = "eks-nodes-${var.environment}-"
   vpc_id      = aws_vpc.main.id
   description = "Security group for EKS worker nodes"
 
@@ -146,7 +146,7 @@ resource "aws_security_group" "eks_nodes" {
 
 # ── Security Group: VPC Endpoints ─────────────────────────────────────────────
 resource "aws_security_group" "vpc_endpoints" {
-  name_prefix = "sg-vpce-${var.environment}-"
+  name_prefix = "vpce-${var.environment}-"
   vpc_id      = aws_vpc.main.id
   description = "Security group for interface VPC endpoints"
 

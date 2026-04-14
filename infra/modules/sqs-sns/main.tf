@@ -15,10 +15,9 @@ resource "aws_kms_alias" "sqs" {
 resource "aws_sqs_queue" "dlq" {
   for_each = toset(var.queue_names)
 
-  name                       = "${var.name}-${each.key}-dlq-${var.environment}"
-  message_retention_seconds  = 1209600 # 14 days
-  kms_master_key_id          = aws_kms_key.sqs.id
-  sqs_managed_sse_enabled    = false
+  name                      = "${var.name}-${each.key}-dlq-${var.environment}"
+  message_retention_seconds = 1209600 # 14 days
+  kms_master_key_id         = aws_kms_key.sqs.id
 
   tags = merge(var.tags, {
     Name = "${var.name}-${each.key}-dlq-${var.environment}"
@@ -35,7 +34,6 @@ resource "aws_sqs_queue" "main" {
   visibility_timeout_seconds = var.visibility_timeout_seconds
   receive_wait_time_seconds  = 20  # long polling
   kms_master_key_id          = aws_kms_key.sqs.id
-  sqs_managed_sse_enabled    = false
 
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.dlq[each.key].arn

@@ -111,6 +111,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title  = "SQS Queue Depth"
+          region = var.aws_region
           period = 60
           stat   = "Average"
           metrics = [
@@ -119,6 +120,7 @@ resource "aws_cloudwatch_dashboard" "main" {
               "QueueName", "${var.name}-${name}-${var.environment}"
             ]
           ]
+          annotations = { alarms = [] }
         }
       },
       {
@@ -127,6 +129,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title  = "DLQ Message Count"
+          region = var.aws_region
           period = 60
           stat   = "Maximum"
           metrics = [
@@ -135,6 +138,7 @@ resource "aws_cloudwatch_dashboard" "main" {
               "QueueName", "${var.name}-${name}-dlq-${var.environment}"
             ]
           ]
+          annotations = { alarms = [] }
         }
       },
       {
@@ -143,11 +147,13 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title  = "EKS Node CPU"
+          region = var.aws_region
           period = 300
           stat   = "Average"
           metrics = [
             ["ContainerInsights", "node_cpu_utilization", "ClusterName", var.eks_cluster_name]
           ]
+          annotations = { alarms = [] }
         }
       },
       {

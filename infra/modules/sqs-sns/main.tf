@@ -45,34 +45,44 @@ resource "aws_sqs_queue" "main" {
   })
 }
 
-# ── Queue Policies (restrict to account; agents access via IRSA IAM roles) ───
+# ── Queue Policies ────────────────────────────────────────────────────────────
+# Single policy per queue. The SNS allow condition uses ArnLike with a wildcard
+# built from account/region data — avoids a circular reference between the queue
+# policy and the SNS topic resource that caused apply timeouts.
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
-
-data "aws_iam_policy_document" "queue_policy" {
-  for_each = toset(var.queue_names)
-
-  statement {
-    sid    = "DenyNonSSL"
-    effect = "Deny"
-    principals {
-      type        = "*"
-      identifiers = ["*"]
-    }
-    actions   = ["sqs:*"]
-    resources = [aws_sqs_queue.main[each.key].arn]
-    condition {
-      test     = "Bool"
-      variable = "aws:SecureTransport"
-      values   = ["false"]
-    }
-  }
-}
 
 resource "aws_sqs_queue_policy" "main" {
   for_each  = toset(var.queue_names)
   queue_url = aws_sqs_queue.main[each.key].id
-  policy    = data.aws_iam_policy_document.queue_policy[each.key].json
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowSNSPublish"
+        Effect = "Allow"
+        Principal = { Service = "sns.amazonaws.com" }
+        Action   = "sqs:SendMessage"
+        Resource = aws_sqs_queue.main[each.key].arn
+        Condition = {
+          ArnLike = {
+            "aws:SourceArn" = "arn:aws:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${var.name}-*-${var.environment}"
+          }
+        }
+      },
+      {
+        Sid    = "DenyNonSSL"
+        Effect = "Deny"
+        Principal = { AWS = "*" }
+        Action   = "sqs:*"
+        Resource = aws_sqs_queue.main[each.key].arn
+        Condition = {
+          Bool = { "aws:SecureTransport" = "false" }
+        }
+      }
+    ]
+  })
 }
 
 # ── SNS Topics (future fan-out; currently 1:1 with SQS) ──────────────────────
@@ -95,36 +105,6 @@ resource "aws_sns_topic_subscription" "sqs" {
 
   # Deliver the raw message body (not the SNS envelope) so agents parse plain JSON
   raw_message_delivery = true
-}
 
-# Allow SNS to write to SQS
-resource "aws_sqs_queue_policy" "allow_sns" {
-  for_each  = toset(var.queue_names)
-  queue_url = aws_sqs_queue.main[each.key].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "AllowSNSPublish"
-        Effect = "Allow"
-        Principal = { Service = "sns.amazonaws.com" }
-        Action    = "sqs:SendMessage"
-        Resource  = aws_sqs_queue.main[each.key].arn
-        Condition = {
-          ArnEquals = { "aws:SourceArn" = aws_sns_topic.agents[each.key].arn }
-        }
-      },
-      {
-        Sid    = "DenyNonSSL"
-        Effect = "Deny"
-        Principal = { AWS = "*" }
-        Action    = "sqs:*"
-        Resource  = aws_sqs_queue.main[each.key].arn
-        Condition = {
-          Bool = { "aws:SecureTransport" = "false" }
-        }
-      }
-    ]
-  })
+  depends_on = [aws_sqs_queue_policy.main]
 }

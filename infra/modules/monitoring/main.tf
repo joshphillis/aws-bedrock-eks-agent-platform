@@ -107,53 +107,62 @@ resource "aws_cloudwatch_dashboard" "main" {
     widgets = [
       {
         type   = "metric"
+        x      = 0
+        y      = 0
         width  = 12
         height = 6
         properties = {
-          title  = "SQS Queue Depth"
-          region = var.aws_region
-          period = 60
-          stat   = "Average"
+          title   = "SQS Queue Depth"
+          region  = var.aws_region
+          view    = "timeSeries"
+          stacked = false
+          period  = 60
+          stat    = "Average"
           metrics = [
             for name in keys(var.sqs_queue_names) : [
               "AWS/SQS", "ApproximateNumberOfMessagesVisible",
               "QueueName", "${var.name}-${name}-${var.environment}"
             ]
           ]
-          annotations = { alarms = [] }
         }
       },
       {
         type   = "metric"
+        x      = 12
+        y      = 0
         width  = 12
         height = 6
         properties = {
-          title  = "DLQ Message Count"
-          region = var.aws_region
-          period = 60
-          stat   = "Maximum"
+          title   = "DLQ Message Count"
+          region  = var.aws_region
+          view    = "timeSeries"
+          stacked = false
+          period  = 60
+          stat    = "Maximum"
           metrics = [
             for name in keys(var.sqs_queue_names) : [
               "AWS/SQS", "ApproximateNumberOfMessagesVisible",
               "QueueName", "${var.name}-${name}-dlq-${var.environment}"
             ]
           ]
-          annotations = { alarms = [] }
         }
       },
       {
         type   = "metric"
+        x      = 0
+        y      = 6
         width  = 12
         height = 6
         properties = {
-          title  = "EKS Node CPU"
-          region = var.aws_region
-          period = 300
-          stat   = "Average"
+          title   = "EKS Node CPU"
+          region  = var.aws_region
+          view    = "timeSeries"
+          stacked = false
+          period  = 300
+          stat    = "Average"
           metrics = [
             ["ContainerInsights", "node_cpu_utilization", "ClusterName", var.eks_cluster_name]
           ]
-          annotations = { alarms = [] }
         }
       },
       {

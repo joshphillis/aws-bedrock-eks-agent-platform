@@ -1,0 +1,74 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: agents
+
+resources:
+  - ../../base
+
+# Pin images to ECR in the dev account — updated by agents.yml CI/CD
+images:
+  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-orchestrator
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-research-agent
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-analysis-agent
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-writer-agent
+    newTag: latest
+
+patches:
+  # Scale orchestrator to 1 replica in dev
+  - patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+    target:
+      kind: Deployment
+      name: orchestrator
+
+  # Tighten memory limits in dev to reduce cost
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "512Mi"
+    target:
+      kind: Deployment
+      labelSelector: "app in (research-agent, analysis-agent)"
+
+  # Patch IRSA role ARNs — replace ACCOUNT_ID with the real AWS account
+  - patch: |-
+      - op: replace
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::ACCOUNT_ID:role/role-orchestrator-dev
+    target:
+      kind: ServiceAccount
+      name: sa-orchestrator
+
+  - patch: |-
+      - op: replace
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::ACCOUNT_ID:role/role-research-agent-dev
+    target:
+      kind: ServiceAccount
+      name: sa-research-agent
+
+  - patch: |-
+      - op: replace
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::ACCOUNT_ID:role/role-analysis-agent-dev
+    target:
+      kind: ServiceAccount
+      name: sa-analysis-agent
+
+  - patch: |-
+      - op: replace
+        path: /metadata/annotations/eks.amazonaws.com~1role-arn
+        value: arn:aws:iam::ACCOUNT_ID:role/role-writer-agent-dev
+    target:
+      kind: ServiceAccount
+      name: sa-writer-agent
+
+commonLabels:
+  environment: dev
+  managed-by: flux

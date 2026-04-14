@@ -1,0 +1,229 @@
+name: Infrastructure
+
+on:
+  push:
+    branches: [main]
+    paths: ["infra/**"]
+  pull_request:
+    branches: [main]
+    paths: ["infra/**"]
+
+env:
+  TF_VERSION:  "1.7.4"
+  AWS_REGION:  "us-east-1"
+  TF_WORK_DIR: "infra/environments/dev"
+
+permissions:
+  id-token:       write   # required for OIDC token exchange
+  contents:       read
+  pull-requests:  write   # required for PR plan comments
+
+jobs:
+  # ── 1. Validate ──────────────────────────────────────────────────────────────
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: infra
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+        working-directory: ${{ env.TF_WORK_DIR }}
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ${{ env.TF_WORK_DIR }}
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: TFLint
+        run: tflint --recursive
+        working-directory: infra
+
+  # ── 2. Security Scan ─────────────────────────────────────────────────────────
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: infra
+          framework: terraform
+          soft_fail: false
+          skip_check: >
+            CKV_AWS_111,
+            CKV_AWS_356
+
+      - name: tfsec
+        uses: aquasecurity/tfsec-action@v1
+        with:
+          working_directory: infra
+          soft_fail: false
+
+  # ── 3. Plan ───────────────────────────────────────────────────────────────────
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    needs: [validate, security-scan]
+    outputs:
+      exitcode: ${{ steps.plan.outputs.exitcode }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORK_DIR }}
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan \
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
+            -var="admin_principal_arn=${{ secrets.ADMIN_PRINCIPAL_ARN }}" \
+            -out=tfplan \
+            -detailed-exitcode
+        working-directory: ${{ env.TF_WORK_DIR }}
+        continue-on-error: true
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_WORK_DIR }}/tfplan
+          retention-days: 7
+
+  # ── 4. PR Comment ─────────────────────────────────────────────────────────────
+  plan-comment:
+    name: PR Comment
+    runs-on: ubuntu-latest
+    needs: plan
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORK_DIR }}
+
+      - name: Terraform Plan (for comment)
+        id: plan
+        run: |
+          terraform plan \
+            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
+            -var="admin_principal_arn=${{ secrets.ADMIN_PRINCIPAL_ARN }}" \
+            -no-color 2>&1 | tee /tmp/plan.txt
+        working-directory: ${{ env.TF_WORK_DIR }}
+        continue-on-error: true
+
+      - name: Post Plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('/tmp/plan.txt', 'utf8');
+            const maxLen = 65000;
+            const truncated = plan.length > maxLen ? plan.slice(0, maxLen) + '\n... (truncated)' : plan;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Terraform Plan\n\`\`\`hcl\n${truncated}\n\`\`\``
+            });
+
+  # ── 5. Apply ──────────────────────────────────────────────────────────────────
+  apply:
+    name: Apply
+    runs-on: ubuntu-latest
+    needs: plan
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: dev    # requires manual approval in GitHub Environments settings
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: ${{ env.TF_WORK_DIR }}
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ${{ env.TF_WORK_DIR }}
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ${{ env.TF_WORK_DIR }}
+
+  # ── 6. Smoke Test ─────────────────────────────────────────────────────────────
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    needs: apply
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name eks-aiplatform-dev --region ${{ env.AWS_REGION }}
+
+      - name: Check EKS nodes
+        run: kubectl get nodes -o wide
+
+      - name: Check SQS queues
+        run: |
+          aws sqs list-queues --queue-name-prefix aiplatform- --query 'QueueUrls' --output table
+
+      - name: Check Secrets Manager secrets
+        run: |
+          aws secretsmanager list-secrets \
+            --filters Key=name,Values=aiplatform/dev \
+            --query 'SecretList[].Name' --output table
+
+      - name: Check Bedrock model access
+        run: |
+          aws bedrock list-foundation-models \
+            --by-provider anthropic \
+            --query 'modelSummaries[?contains(modelId, `claude-3-5-sonnet`)].modelId' \
+            --output table

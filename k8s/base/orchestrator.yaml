@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orchestrator
+  namespace: agents
+  labels:
+    app: orchestrator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: orchestrator
+  template:
+    metadata:
+      labels:
+        app: orchestrator
+    spec:
+      serviceAccountName: sa-orchestrator
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: orchestrator
+          image: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-orchestrator:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-orchestrator
+                  key: aws-region
+            - name: BEDROCK_MODEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-orchestrator
+                  key: bedrock-model-id
+            - name: SQS_RESEARCH_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-orchestrator
+                  key: sqs-research-queue-url
+            - name: SQS_ANALYSIS_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-orchestrator
+                  key: sqs-analysis-queue-url
+            - name: SQS_WRITER_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-orchestrator
+                  key: sqs-writer-queue-url
+            - name: SQS_RESULTS_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-orchestrator
+                  key: sqs-results-queue-url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-orchestrator
+                  key: openai-api-key
+                  optional: true
+          volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: spc-orchestrator
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orchestrator
+  namespace: agents
+  labels:
+    app: orchestrator
+spec:
+  type: ClusterIP
+  selector:
+    app: orchestrator
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pdb-orchestrator
+  namespace: agents
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: orchestrator

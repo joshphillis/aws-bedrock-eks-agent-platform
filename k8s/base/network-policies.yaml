@@ -1,0 +1,73 @@
+# Zero-trust NetworkPolicies for the agents namespace.
+# Default deny-all, then allow only what each workload needs.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: agents
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Orchestrator: accepts HTTP from the cluster (ingress controller / internal callers),
+# and reaches SQS + Bedrock + Secrets Manager via VPC endpoints (HTTPS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-orchestrator
+  namespace: agents
+spec:
+  podSelector:
+    matchLabels:
+      app: orchestrator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # AWS VPC endpoints (SQS, Bedrock, Secrets Manager, STS) and OpenAI fallback
+    - ports:
+        - port: 443
+          protocol: TCP
+---
+# Worker agents: no inbound traffic (pure consumers); reach SQS + Bedrock + Secrets Manager.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-workers
+  namespace: agents
+spec:
+  podSelector:
+    matchLabels:
+      role: worker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow kubelet health-check probes only
+    - ports:
+        - port: 8080
+          protocol: TCP
+  egress:
+    # DNS
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # AWS VPC endpoints + OpenAI fallback
+    - ports:
+        - port: 443
+          protocol: TCP

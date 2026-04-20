@@ -35,10 +35,37 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          envFrom:
-            - secretRef:
-                name: agent-secrets
+          env:
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-research
+                  key: aws-region
+            - name: BEDROCK_MODEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-research
+                  key: bedrock-model-id
+            - name: SQS_RESEARCH_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-research
+                  key: sqs-research-queue-url
+            - name: SQS_RESULTS_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-research
+                  key: sqs-results-queue-url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-research
+                  key: openai-api-key
+                  optional: true
           volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
             - name: tmp
               mountPath: /tmp
           securityContext:
@@ -66,6 +93,12 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
       volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: spc-research-agent
         - name: tmp
           emptyDir: {}
 ---
@@ -106,10 +139,37 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          envFrom:
-            - secretRef:
-                name: agent-secrets
+          env:
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-analysis
+                  key: aws-region
+            - name: BEDROCK_MODEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-analysis
+                  key: bedrock-model-id
+            - name: SQS_ANALYSIS_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-analysis
+                  key: sqs-analysis-queue-url
+            - name: SQS_RESULTS_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-analysis
+                  key: sqs-results-queue-url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-analysis
+                  key: openai-api-key
+                  optional: true
           volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
             - name: tmp
               mountPath: /tmp
           securityContext:
@@ -137,6 +197,12 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
       volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: spc-analysis-agent
         - name: tmp
           emptyDir: {}
 ---
@@ -177,10 +243,37 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
-          envFrom:
-            - secretRef:
-                name: agent-secrets
+          env:
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-writer
+                  key: aws-region
+            - name: BEDROCK_MODEL_ID
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-writer
+                  key: bedrock-model-id
+            - name: SQS_WRITER_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-writer
+                  key: sqs-writer-queue-url
+            - name: SQS_RESULTS_QUEUE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-writer
+                  key: sqs-results-queue-url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: agent-secrets-writer
+                  key: openai-api-key
+                  optional: true
           volumeMounts:
+            - name: secrets-store
+              mountPath: /mnt/secrets
+              readOnly: true
             - name: tmp
               mountPath: /tmp
           securityContext:
@@ -208,5 +301,11 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 10
       volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: spc-writer-agent
         - name: tmp
           emptyDir: {}

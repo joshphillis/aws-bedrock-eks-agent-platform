@@ -85,7 +85,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          role-to-assume: arn:aws:iam::${{ vars.AWS_851725205521 }}:role/github-actions-terraform
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -125,7 +125,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          role-to-assume: arn:aws:iam::${{ vars.AWS_851725205521 }}:role/github-actions-terraform
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -173,7 +173,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          role-to-assume: arn:aws:iam::${{ vars.AWS_851725205521 }}:role/github-actions-terraform
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -202,7 +202,7 @@ jobs:
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-terraform
+          role-to-assume: arn:aws:iam::${{ vars.AWS_851725205521 }}:role/github-actions-terraform
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig

@@ -72,7 +72,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-ecr
+          role-to-assume: arn:aws:iam::${{ vars.AWS_851725205521 }}:role/github-actions-ecr
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
@@ -136,7 +136,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-ecr
+          role-to-assume: arn:aws:iam::${{ vars.AWS_851725205521 }}:role/github-actions-ecr
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
@@ -174,7 +174,7 @@ jobs:
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-ecr
+          role-to-assume: arn:aws:iam::${{ vars.AWS_851725205521 }}:role/github-actions-ecr
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig

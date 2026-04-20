@@ -10,5 +10,5 @@ output "repository_arns" {
 
 output "registry_id" {
   description = "ECR registry ID (AWS account ID)"
-  value       = data.aws_caller_identity.current.account_id
+  value = data.aws_caller_identity.current.account_id
 }

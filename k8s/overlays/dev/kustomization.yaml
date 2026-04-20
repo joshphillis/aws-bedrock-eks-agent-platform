@@ -8,13 +8,13 @@ resources:
 
 # Pin images to ECR in the dev account — updated by agents.yml CI/CD
 images:
-  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-orchestrator
+  - name: 851725205521.dkr.ecr.us-east-1.amazonaws.com/aiplatform-orchestrator
     newTag: latest
-  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-research-agent
+  - name: 851725205521.dkr.ecr.us-east-1.amazonaws.com/aiplatform-research-agent
     newTag: latest
-  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-analysis-agent
+  - name: 851725205521.dkr.ecr.us-east-1.amazonaws.com/aiplatform-analysis-agent
     newTag: latest
-  - name: ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/aiplatform-writer-agent
+  - name: 851725205521.dkr.ecr.us-east-1.amazonaws.com/aiplatform-writer-agent
     newTag: latest
 
 patches:
@@ -36,11 +36,11 @@ patches:
       kind: Deployment
       labelSelector: "app in (research-agent, analysis-agent)"
 
-  # Patch IRSA role ARNs — replace ACCOUNT_ID with the real AWS account
+  # Patch IRSA role ARNs — replace 851725205521 with the real AWS account
   - patch: |-
       - op: replace
         path: /metadata/annotations/eks.amazonaws.com~1role-arn
-        value: arn:aws:iam::ACCOUNT_ID:role/role-orchestrator-dev
+        value: arn:aws:iam::851725205521:role/role-orchestrator-dev
     target:
       kind: ServiceAccount
       name: sa-orchestrator
@@ -48,7 +48,7 @@ patches:
   - patch: |-
       - op: replace
         path: /metadata/annotations/eks.amazonaws.com~1role-arn
-        value: arn:aws:iam::ACCOUNT_ID:role/role-research-agent-dev
+        value: arn:aws:iam::851725205521:role/role-research-agent-dev
     target:
       kind: ServiceAccount
       name: sa-research-agent
@@ -56,7 +56,7 @@ patches:
   - patch: |-
       - op: replace
         path: /metadata/annotations/eks.amazonaws.com~1role-arn
-        value: arn:aws:iam::ACCOUNT_ID:role/role-analysis-agent-dev
+        value: arn:aws:iam::851725205521:role/role-analysis-agent-dev
     target:
       kind: ServiceAccount
       name: sa-analysis-agent
@@ -64,7 +64,7 @@ patches:
   - patch: |-
       - op: replace
         path: /metadata/annotations/eks.amazonaws.com~1role-arn
-        value: arn:aws:iam::ACCOUNT_ID:role/role-writer-agent-dev
+        value: arn:aws:iam::851725205521:role/role-writer-agent-dev
     target:
       kind: ServiceAccount
       name: sa-writer-agent

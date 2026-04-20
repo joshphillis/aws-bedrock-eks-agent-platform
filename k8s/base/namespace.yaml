@@ -13,7 +13,7 @@ metadata:
   name: sa-orchestrator
   namespace: agents
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/role-orchestrator-dev
+    eks.amazonaws.com/role-arn: arn:aws:iam::851725205521:role/role-orchestrator-dev
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -21,7 +21,7 @@ metadata:
   name: sa-research-agent
   namespace: agents
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/role-research-agent-dev
+    eks.amazonaws.com/role-arn: arn:aws:iam::851725205521:role/role-research-agent-dev
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -29,7 +29,7 @@ metadata:
   name: sa-analysis-agent
   namespace: agents
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/role-analysis-agent-dev
+    eks.amazonaws.com/role-arn: arn:aws:iam::851725205521:role/role-analysis-agent-dev
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -37,4 +37,4 @@ metadata:
   name: sa-writer-agent
   namespace: agents
   annotations:
-    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/role-writer-agent-dev
+    eks.amazonaws.com/role-arn: arn:aws:iam::851725205521:role/role-writer-agent-dev

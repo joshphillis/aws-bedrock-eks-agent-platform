@@ -87,13 +87,13 @@ aws secretsmanager put-secret-value \
 
 ### 6. Patch Kubernetes overlays
 
-Replace `ACCOUNT_ID` placeholders in `k8s/overlays/dev/kustomization.yaml` with the
+Replace `851725205521` placeholders in `k8s/overlays/dev/kustomization.yaml` with the
 real AWS account ID from the Terraform outputs.
 
 ```bash
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-sed -i "s/ACCOUNT_ID/${ACCOUNT_ID}/g" k8s/overlays/dev/kustomization.yaml
-sed -i "s/ACCOUNT_ID/${ACCOUNT_ID}/g" k8s/base/namespace.yaml
+851725205521=$(aws sts get-caller-identity --query Account --output text)
+sed -i "s/851725205521/${851725205521}/g" k8s/overlays/dev/kustomization.yaml
+sed -i "s/851725205521/${851725205521}/g" k8s/base/namespace.yaml
 ```
 
 ### 7. Build images and bootstrap Flux

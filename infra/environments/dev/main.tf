@@ -145,7 +145,7 @@ module "codebuild" {
 
   # Grants the existing GitHub Actions OIDC role permission to start builds.
   # Set to null to skip (e.g. if you manage that role elsewhere).
-  github_actions_role_name = "github-actions-ecr"
+  github_actions_role_name = null
 
   tags = local.tags
 }

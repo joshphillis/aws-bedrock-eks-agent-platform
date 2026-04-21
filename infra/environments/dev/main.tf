@@ -124,8 +124,9 @@ module "secrets" {
   oidc_provider_url = module.eks.oidc_provider_url
   bedrock_model_id = var.bedrock_model_id
 
-  sqs_queue_urls = module.sqs_sns.queue_urls
-  sqs_queue_arns = module.sqs_sns.queue_arns
+  sqs_queue_urls  = module.sqs_sns.queue_urls
+  sqs_queue_arns  = module.sqs_sns.queue_arns
+  sqs_kms_key_arn = module.sqs_sns.kms_key_arn
 
   tags = local.tags
 }

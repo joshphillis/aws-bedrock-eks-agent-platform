@@ -51,6 +51,11 @@ variable "sqs_queue_arns" {
   type        = map(string)
 }
 
+variable "sqs_kms_key_arn" {
+  description = "KMS key ARN used to encrypt SQS queues (from sqs-sns module)"
+  type        = string
+}
+
 variable "tags" {
   description = "Additional tags"
   type        = map(string)

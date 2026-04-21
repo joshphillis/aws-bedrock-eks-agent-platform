@@ -200,6 +200,27 @@ resource "aws_iam_policy" "sqs_worker" {
   tags        = var.tags
 }
 
+# ── IAM Policy: SQS KMS key access ──────────────────────────────────────────
+data "aws_iam_policy_document" "sqs_kms" {
+  statement {
+    sid    = "UseSQSKMSKey"
+    effect = "Allow"
+    actions = [
+      "kms:GenerateDataKey",
+      "kms:Decrypt",
+      "kms:DescribeKey",
+    ]
+    resources = [var.sqs_kms_key_arn]
+  }
+}
+
+resource "aws_iam_policy" "sqs_kms" {
+  name        = "policy-sqs-kms-${var.name}-${var.environment}"
+  description = "Allow agents to use the SQS KMS key for encrypt/decrypt"
+  policy      = data.aws_iam_policy_document.sqs_kms.json
+  tags        = var.tags
+}
+
 # ── CloudWatch Logs policy (shared) ──────────────────────────────────────────
 data "aws_iam_policy_document" "cloudwatch_logs" {
   statement {
@@ -250,4 +271,10 @@ resource "aws_iam_role_policy_attachment" "sqs_worker" {
   for_each   = local.worker_queue_map
   role       = aws_iam_role.agent[each.key].name
   policy_arn = aws_iam_policy.sqs_worker[each.key].arn
+}
+
+resource "aws_iam_role_policy_attachment" "sqs_kms" {
+  for_each   = toset(var.agent_names)
+  role       = aws_iam_role.agent[each.key].name
+  policy_arn = aws_iam_policy.sqs_kms.arn
 }

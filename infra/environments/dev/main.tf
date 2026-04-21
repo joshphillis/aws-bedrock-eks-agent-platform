@@ -130,6 +130,26 @@ module "secrets" {
   tags = local.tags
 }
 
+# ── CodeBuild (Docker image CI) ───────────────────────────────────────────────
+module "codebuild" {
+  source = "../../modules/codebuild"
+
+  name        = var.name
+  environment = var.environment
+  aws_region  = var.aws_region
+
+  github_repo = "joshphillis/aws-bedrock-eks-agent-platform"
+
+  ecr_repository_urls = module.ecr.repository_urls
+  ecr_repository_arns = module.ecr.repository_arns
+
+  # Grants the existing GitHub Actions OIDC role permission to start builds.
+  # Set to null to skip (e.g. if you manage that role elsewhere).
+  github_actions_role_name = "github-actions-ecr"
+
+  tags = local.tags
+}
+
 # ── CloudWatch Monitoring ─────────────────────────────────────────────────────
 module "monitoring" {
   source = "../../modules/monitoring"

@@ -120,26 +120,36 @@ async def decompose_task(prompt: str) -> dict:
 
 
 # ── SQS helpers ───────────────────────────────────────────────────────────────
-def _publish(queue_url: str, message: dict) -> None:
-    sqs_client.send_message(
-        QueueUrl=queue_url,
-        MessageBody=json.dumps(message),
-        MessageAttributes={
-            "content-type": {"DataType": "String", "StringValue": "application/json"},
-        },
+async def _publish(queue_url: str, message: dict) -> None:
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None,
+        lambda: sqs_client.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message),
+            MessageAttributes={
+                "content-type": {"DataType": "String", "StringValue": "application/json"},
+            },
+        ),
     )
 
 
 # ── Background result listener ────────────────────────────────────────────────
 async def results_listener() -> None:
     logger.info("Results listener started — polling %s", SQS_RESULTS_QUEUE_URL)
+    loop = asyncio.get_running_loop()
     while True:
         try:
-            resp = sqs_client.receive_message(
-                QueueUrl=SQS_RESULTS_QUEUE_URL,
-                MaxNumberOfMessages=10,
-                WaitTimeSeconds=20,
-                AttributeNames=["All"],
+            # run_in_executor keeps the 20-second long-poll off the event loop
+            # so FastAPI (and all other handlers) stay responsive during the wait
+            resp = await loop.run_in_executor(
+                None,
+                lambda: sqs_client.receive_message(
+                    QueueUrl=SQS_RESULTS_QUEUE_URL,
+                    MaxNumberOfMessages=10,
+                    WaitTimeSeconds=20,
+                    AttributeNames=["All"],
+                ),
             )
             for msg in resp.get("Messages", []):
                 try:
@@ -150,9 +160,12 @@ async def results_listener() -> None:
                         results_store.setdefault(job_id, {})[agent_type] = body.get("result", {})
                         pending_jobs.get(job_id, set()).discard(agent_type)
                         logger.info("Received result job=%s agent=%s", job_id, agent_type)
-                    sqs_client.delete_message(
-                        QueueUrl=SQS_RESULTS_QUEUE_URL,
-                        ReceiptHandle=msg["ReceiptHandle"],
+                    await loop.run_in_executor(
+                        None,
+                        lambda: sqs_client.delete_message(
+                            QueueUrl=SQS_RESULTS_QUEUE_URL,
+                            ReceiptHandle=msg["ReceiptHandle"],
+                        ),
                     )
                 except Exception as exc:
                     logger.error("Error processing result message: %s", exc)
@@ -218,7 +231,7 @@ async def create_task(request: TaskRequest):
     for plan_key, (agent_type, queue_url) in routing.items():
         task_text = plan.get(plan_key)
         if task_text and queue_url:
-            _publish(queue_url, {
+            await _publish(queue_url, {
                 "job_id":     job_id,
                 "agent_type": agent_type,
                 "task":       task_text,

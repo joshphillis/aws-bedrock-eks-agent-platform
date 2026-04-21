@@ -94,13 +94,17 @@ async def process_message(body: dict) -> None:
     raw    = await run_llm(task)
     result = json.loads(raw)
 
-    sqs_client.send_message(
-        QueueUrl=SQS_RESULTS_QUEUE_URL,
-        MessageBody=json.dumps({
-            "job_id":     job_id,
-            "agent_type": "analysis",
-            "result":     result,
-        }),
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None,
+        lambda: sqs_client.send_message(
+            QueueUrl=SQS_RESULTS_QUEUE_URL,
+            MessageBody=json.dumps({
+                "job_id":     job_id,
+                "agent_type": "analysis",
+                "result":     result,
+            }),
+        ),
     )
     logger.info("Published analysis result job=%s confidence=%s",
                 job_id, result.get("confidence"))
@@ -109,12 +113,16 @@ async def process_message(body: dict) -> None:
 # ── SQS polling loop ──────────────────────────────────────────────────────────
 async def poll_queue() -> None:
     logger.info("Analysis agent polling %s", SQS_ANALYSIS_QUEUE_URL)
+    loop = asyncio.get_running_loop()
     while True:
         try:
-            resp = sqs_client.receive_message(
-                QueueUrl=SQS_ANALYSIS_QUEUE_URL,
-                MaxNumberOfMessages=5,
-                WaitTimeSeconds=20,
+            resp = await loop.run_in_executor(
+                None,
+                lambda: sqs_client.receive_message(
+                    QueueUrl=SQS_ANALYSIS_QUEUE_URL,
+                    MaxNumberOfMessages=5,
+                    WaitTimeSeconds=20,
+                ),
             )
             for msg in resp.get("Messages", []):
                 receipt_handle = msg["ReceiptHandle"]
@@ -123,9 +131,12 @@ async def poll_queue() -> None:
                 except Exception as exc:
                     logger.error("Error processing message: %s", exc)
                 finally:
-                    sqs_client.delete_message(
-                        QueueUrl=SQS_ANALYSIS_QUEUE_URL,
-                        ReceiptHandle=receipt_handle,
+                    await loop.run_in_executor(
+                        None,
+                        lambda: sqs_client.delete_message(
+                            QueueUrl=SQS_ANALYSIS_QUEUE_URL,
+                            ReceiptHandle=receipt_handle,
+                        ),
                     )
         except Exception as exc:
             logger.error("SQS receive error: %s", exc)
